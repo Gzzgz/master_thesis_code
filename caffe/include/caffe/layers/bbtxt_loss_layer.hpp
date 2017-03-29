@@ -119,6 +119,7 @@ protected:
     BlockingCounter _num_processed;
 
     std::atomic<Dtype> _loss_prob;
+    std::atomic<Dtype> _loss_conf;
     std::atomic<Dtype> _loss_coord;
 
 };

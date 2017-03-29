@@ -62,7 +62,7 @@ void BBTXTLossLayer<Dtype>::Reshape (const vector<Blob<Dtype>*> &bottom, const v
 
     LossLayer<Dtype>::Reshape(bottom, top);
 
-    CHECK_EQ(bottom[1]->shape(1), 5) << "Accumulator must have 5 channels (prob, xmin, ymin, xmax, ymax)!";
+    CHECK_EQ(bottom[1]->shape(1), 6) << "Accumulator must have 6 channels (prob, conf, xmin, ymin, xmax, ymax)!";
 
     this->_accumulator->ReshapeLike(*bottom[1]);
     this->_diff->ReshapeLike(*bottom[1]);
@@ -75,6 +75,7 @@ void BBTXTLossLayer<Dtype>::Forward_cpu (const vector<Blob<Dtype>*> &bottom, con
     const int batch_size = bottom[1]->shape(0);
 
     this->_loss_prob  = Dtype(0.0f);
+    this->_loss_conf  = Dtype(0.0f);
     this->_loss_coord = Dtype(0.0f);
 
     this->_num_processed.reset();
@@ -93,7 +94,9 @@ void BBTXTLossLayer<Dtype>::Forward_cpu (const vector<Blob<Dtype>*> &bottom, con
     // Loss per pixel
     Dtype loss = (this->_loss_prob/batch_size + this->_loss_coord/batch_size) / Dtype(2.0f);
 
-    std::cout << "loss_prob: " << (this->_loss_prob / batch_size) << ", loss_coord: " << (this->_loss_coord / batch_size) << std::endl;
+    std::cout << "loss_prob: " << (this->_loss_prob / batch_size)
+              << ", loss_conf: " << (this->_loss_conf / batch_size)
+              << ", loss_coord: " << (this->_loss_coord / batch_size)  << std::endl;
 
     top[0]->mutable_cpu_data()[0] = loss;
 }
@@ -148,12 +151,16 @@ void BBTXTLossLayer<Dtype>::InternalThreadpoolEntry (int t)
             // Loss from the probability accumulator (channel 0)
             const Dtype *data_prob = this->_diff->cpu_data() + this->_diff->offset(b, 0);
             Dtype loss_prob = caffe_cpu_dot(count_channel, data_prob, data_prob);
-            // Loss from the coordinates (channels 1-4)
-            const Dtype *data_coord = this->_diff->cpu_data() + this->_diff->offset(b, 1);
+            // Loss from the confidence accumulator (channel 1)
+            const Dtype *data_conf = this->_diff->cpu_data() + this->_diff->offset(b, 1);
+            Dtype loss_conf = caffe_cpu_dot(count_channel, data_conf, data_conf);
+            // Loss from the coordinates (channels 2-5)
+            const Dtype *data_coord = this->_diff->cpu_data() + this->_diff->offset(b, 2);
             Dtype loss_coord = caffe_cpu_dot(4*count_channel, data_coord, data_coord);
 
             // Loss per pixel
-            this->_loss_prob  = this->_loss_prob  + loss_prob  / count_channel;
+            this->_loss_prob = this->_loss_prob + loss_prob / count_channel;
+            this->_loss_conf = this->_loss_conf + loss_conf / count_channel;
             if (num_removed_coords != 4*count_channel)
             {
                 this->_loss_coord = this->_loss_coord + loss_coord / (4*count_channel - num_removed_coords);
@@ -230,9 +237,28 @@ void BBTXTLossLayer<Dtype>::_buildAccumulator (int b)
     const double scaling_ratio = 1.0 / this->_scale;
 
 
-    // The channels of the accumulator go like this: probability, xmin, ymin, xmax, ymax
-    for (int c = 0; c < 5; ++c)
+    // The channels of the accumulator go like this: probability, confidence, xmin, ymin, xmax, ymax
+    for (int c = 0; c < 6; ++c)
     {
+        if (c == 1)
+        {
+            // Confidence is the error in the probability prediction
+            const Dtype *data_acc_prob = this->_accumulator->cpu_data() + this->_accumulator->offset(b, 0);
+            const Dtype *data_bot_prob = this->_bottom->cpu_data() + this->_bottom->offset(b, 0);
+            Dtype *data_acc_conf       = accumulator_data + this->_accumulator->offset(b, c);
+
+            for (int i = 0; i < height*width; ++i)
+            {
+                *data_acc_conf = std::abs(*data_acc_prob - *data_bot_prob);
+
+                data_acc_prob++;
+                data_bot_prob++;
+                data_acc_conf++;
+            }
+
+            continue;
+        }
+
         // Create a cv::Mat wrapper for the accumulator - this way we can now use OpenCV drawing functions
         // to create circles in the accumulator
         cv::Mat acc(height, width, CV_32FC1, accumulator_data + this->_accumulator->offset(b, c));
@@ -276,9 +302,9 @@ int BBTXTLossLayer<Dtype>::_removeNegativeCoordinateDiff (int b)
 {
     int num_removed = 0;
 
-    // The channels of the accumulator go like this: probability, xmin, ymin, xmax, ymax - we want to
-    // nullify the diffs of the coordinates, thus indices 1 to 4
-    for (int c = 1; c < 5; ++c)
+    // The channels of the accumulator go like this: probability, conf, xmin, ymin, xmax, ymax - we want to
+    // nullify the diffs of the coordinates, thus indices 2 to 5
+    for (int c = 2; c < 6; ++c)
     {
         const Dtype *data_acc_prob = this->_accumulator->cpu_data() + this->_accumulator->offset(b, 0);
         Dtype *data_diff_coord     = this->_diff->mutable_cpu_data() + this->_diff->offset(b, c);
@@ -317,6 +343,7 @@ void BBTXTLossLayer<Dtype>::_applyDiffWeights (int b)
     std::vector<Dtype*> data_diff_m;
     for (int c = 0; c < this->_diff->shape(1); ++c)
     {
+        if (c == 1) continue; // Skip the confidence channel
         data_diff_m.push_back(this->_diff->mutable_cpu_data() + this->_diff->offset(b, c));
     }
 
@@ -401,12 +428,12 @@ void BBTXTLossLayer<Dtype>::_renderCoordinateCircle (cv::Mat &acc, int x, int y,
                     // Change its value to the actual value - coordinate relative to the current pixel position
                     // The coordinates are converted to approximately [0,1], i.e. the ideal bounding box has
                     // coordinates [0,0], [1,1], but the actual bounding boxes will differ in both dimensions
-                    if (channel == 1 || channel == 3)
+                    if (channel == 2 || channel == 4)
                     {
                         // xmin, xmax
                         acc.at<Dtype>(yp, xp) = Dtype(0.5f + (value-x - j*this->_scale) / this->_ideal_size);
                     }
-                    else if (channel == 2 || channel == 4)
+                    else if (channel == 3 || channel == 5)
                     {
                         // ymin, ymax
                         acc.at<Dtype>(yp, xp) = Dtype(0.5f + (value-y - i*this->_scale) / this->_ideal_size);
