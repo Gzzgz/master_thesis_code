@@ -289,7 +289,7 @@ void BBTXTLossLayer<Dtype>::_buildAccumulator (int b)
                 }
                 else
                 {
-                    this->_renderCoordinateCircle(acc, x, y, data[c], c);
+                    this->_renderCoordinateCircle(acc, x, y, data[c-1], c);
                 }
             }
         }
