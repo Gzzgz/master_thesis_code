@@ -249,7 +249,7 @@ void BBTXTLossLayer<Dtype>::_buildAccumulator (int b)
 
             for (int i = 0; i < height*width; ++i)
             {
-                *data_acc_conf = std::abs(*data_acc_prob - *data_bot_prob);
+                *data_acc_conf = *data_acc_prob - *data_bot_prob;
 
                 data_acc_prob++;
                 data_bot_prob++;
