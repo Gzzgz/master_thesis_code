@@ -339,6 +339,7 @@ void BBTXTLossLayer<Dtype>::_applyDiffWeights (int b)
 
 
     const Dtype* data_acc_prob  = this->_accumulator->cpu_data() + this->_accumulator->offset(b, 0);
+    Dtype* data_diff_conf       = this->_diff->mutable_cpu_data() + this->_diff->offset(b, 1);
 //    const Dtype *data_diff_prob = this->_diff->cpu_data() + this->_diff->offset(b, 0);
     std::vector<Dtype*> data_diff_m;
     for (int c = 0; c < this->_diff->shape(1); ++c)
@@ -392,6 +393,9 @@ void BBTXTLossLayer<Dtype>::_applyDiffWeights (int b)
 //        }
 
         data_acc_prob++;
+
+        *data_diff_conf = Dtype(0);
+        data_diff_conf++;
     }
 }
 
