@@ -241,6 +241,11 @@ void BB3TXTLossLayer<Dtype>::_buildAccumulator (int b)
     // The channels of the accumulator go like this: prob, conf, fblx, fbly, fbrx, fbry, rblx, rbly, ftly
     for (int c = 0; c < 9; ++c)
     {
+        // Create a cv::Mat wrapper for the accumulator - this way we can now use OpenCV drawing functions
+        // to create circles in the accumulator
+        cv::Mat acc(height, width, CV_32FC1, accumulator_data + this->_accumulator->offset(b, c));
+        acc.setTo(cv::Scalar(0));
+
         if (c == 1)
         {
             // Confidence is the error in the probability prediction
@@ -259,11 +264,6 @@ void BB3TXTLossLayer<Dtype>::_buildAccumulator (int b)
 
             continue;
         }
-
-        // Create a cv::Mat wrapper for the accumulator - this way we can now use OpenCV drawing functions
-        // to create circles in the accumulator
-        cv::Mat acc(height, width, CV_32FC1, accumulator_data + this->_accumulator->offset(b, c));
-        acc.setTo(cv::Scalar(0));
 
         // Draw circles in the center of the bounding boxes
         for (int i = 0; i < this->_labels->shape(1); ++i)
@@ -287,6 +287,11 @@ void BB3TXTLossLayer<Dtype>::_buildAccumulator (int b)
                 {
                     cv::circle(acc, cv::Point(scaling_ratio*x,
                                               scaling_ratio*y), radius, cv::Scalar(Dtype(1.0f)), -1);
+                }
+                else if (c == 1)
+                {
+                    cv::circle(acc, cv::Point(scaling_ratio*x,
+                                              scaling_ratio*y), radius+1, cv::Scalar(Dtype(0.0f)), -1);
                 }
                 else
                 {
@@ -341,6 +346,7 @@ void BB3TXTLossLayer<Dtype>::_applyDiffWeights (int b)
 
 
     const Dtype* data_acc_prob  = this->_accumulator->cpu_data() + this->_accumulator->offset(b, 0);
+    Dtype* data_diff_conf       = this->_diff->mutable_cpu_data() + this->_diff->offset(b, 1);
 //    const Dtype *data_diff_prob = this->_diff->cpu_data() + this->_diff->offset(b, 0);
     std::vector<Dtype*> data_diff_m;
     for (int c = 0; c < this->_diff->shape(1); ++c)
@@ -394,6 +400,9 @@ void BB3TXTLossLayer<Dtype>::_applyDiffWeights (int b)
 //        }
 
         data_acc_prob++;
+
+        *data_diff_conf *= Dtype(0.1);
+        data_diff_conf++;
     }
 }
 

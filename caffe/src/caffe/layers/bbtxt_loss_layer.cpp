@@ -240,6 +240,11 @@ void BBTXTLossLayer<Dtype>::_buildAccumulator (int b)
     // The channels of the accumulator go like this: probability, confidence, xmin, ymin, xmax, ymax
     for (int c = 0; c < 6; ++c)
     {
+        // Create a cv::Mat wrapper for the accumulator - this way we can now use OpenCV drawing functions
+        // to create circles in the accumulator
+        cv::Mat acc(height, width, CV_32FC1, accumulator_data + this->_accumulator->offset(b, c));
+        acc.setTo(cv::Scalar(0));
+
         if (c == 1)
         {
             // Confidence is the error in the probability prediction
@@ -255,14 +260,7 @@ void BBTXTLossLayer<Dtype>::_buildAccumulator (int b)
                 data_bot_prob++;
                 data_acc_conf++;
             }
-
-            continue;
         }
-
-        // Create a cv::Mat wrapper for the accumulator - this way we can now use OpenCV drawing functions
-        // to create circles in the accumulator
-        cv::Mat acc(height, width, CV_32FC1, accumulator_data + this->_accumulator->offset(b, c));
-        acc.setTo(cv::Scalar(0));
 
         // Draw circles in the center of the bounding boxes
         for (int i = 0; i < this->_labels->shape(1); ++i)
@@ -286,6 +284,11 @@ void BBTXTLossLayer<Dtype>::_buildAccumulator (int b)
                 {
                     cv::circle(acc, cv::Point(scaling_ratio*x,
                                               scaling_ratio*y), radius, cv::Scalar(Dtype(1.0f)), -1);
+                }
+                else if (c == 1)
+                {
+                    cv::circle(acc, cv::Point(scaling_ratio*x,
+                                              scaling_ratio*y), radius+1, cv::Scalar(Dtype(0.0f)), -1);
                 }
                 else
                 {
