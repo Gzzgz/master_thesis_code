@@ -117,8 +117,6 @@ void runPyramidDetection (const std::string &path_prototxt, const std::string &p
             cv::Mat acc_prob(output->shape(2), output->shape(3), CV_32FC1, data_output+output->offset(0, 0));
             cv::Mat acc_conf(output->shape(2), output->shape(3), CV_32FC1, data_output+output->offset(0, 1));
 
-            std::cout << acc_conf << std::endl;
-
             if (output->shape(1) == 6)
             {
                 // 2D bounding box
@@ -130,8 +128,22 @@ void runPyramidDetection (const std::string &path_prototxt, const std::string &p
                 double mx;
                 cv::minMaxLoc(acc_prob, 0, &mx);
                 std::cout << mx << std::endl;
+                double mnc, mxc;
+                cv::minMaxLoc(acc_conf, &mnc, &mxc);
+                std::cout << mnc << " " << mxc << std::endl;
 
                 cv::imshow("Accumulator " + net->blob_names()[net->output_blob_indices()[0]] + " (" + std::to_string(s) + ")", acc_prob);
+                cv::Mat fp; acc_conf.copyTo(fp);
+                for (int i = 0; i < fp.rows; ++i) {
+                    for (int j = 0; j < fp.cols; ++j) {
+                        if (fp.at<float>(i, j) > 0) fp.at<float>(i, j) = 0;
+                        else
+                        {
+                            fp.at<float>(i, j) *= -1;
+                        }
+                    }
+                }
+                cv::imshow("False positive " + net->blob_names()[net->output_blob_indices()[0]] + " (" + std::to_string(s) + ")", fp);
 
                 // Draw detected boxes
                 for (int i = 0; i < acc_prob.rows; ++i)
