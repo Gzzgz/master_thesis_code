@@ -160,17 +160,18 @@ std::vector<BB2D> extract2DBoundingBoxes (caffe::Blob<float> *output, const std:
 
     // 2D bounding box
     cv::Mat acc_prob(output->shape(2), output->shape(3), CV_32FC1, data_output+output->offset(0, 0));
-    cv::Mat acc_xmin(output->shape(2), output->shape(3), CV_32FC1, data_output+output->offset(0, 1));
-    cv::Mat acc_ymin(output->shape(2), output->shape(3), CV_32FC1, data_output+output->offset(0, 2));
-    cv::Mat acc_xmax(output->shape(2), output->shape(3), CV_32FC1, data_output+output->offset(0, 3));
-    cv::Mat acc_ymax(output->shape(2), output->shape(3), CV_32FC1, data_output+output->offset(0, 4));
+    cv::Mat acc_conf(output->shape(2), output->shape(3), CV_32FC1, data_output+output->offset(0, 1));
+    cv::Mat acc_xmin(output->shape(2), output->shape(3), CV_32FC1, data_output+output->offset(0, 2));
+    cv::Mat acc_ymin(output->shape(2), output->shape(3), CV_32FC1, data_output+output->offset(0, 3));
+    cv::Mat acc_xmax(output->shape(2), output->shape(3), CV_32FC1, data_output+output->offset(0, 4));
+    cv::Mat acc_ymax(output->shape(2), output->shape(3), CV_32FC1, data_output+output->offset(0, 5));
 
     // Extract detected boxes
     for (int i = 0; i < acc_prob.rows; ++i)
     {
         for (int j = 0; j < acc_prob.cols; ++j)
         {
-            float conf = acc_prob.at<float>(i, j);
+            float conf = acc_prob.at<float>(i, j) + acc_conf.at<float>(i, j);
             if (conf >= 0.1)
             {
                 int xmin = (4*j + (80*(acc_xmin.at<float>(i, j) - 0.5))) / scale;
@@ -345,7 +346,7 @@ void runPyramidDetection (const std::string &path_prototxt, const std::string &p
 
     CHECK_EQ(net->num_inputs(), 1) << "Network should have exactly one input.";
     CHECK_EQ(input_layer->shape(1), 3) << "Input layer must have 3 channels.";
-    CHECK_EQ(output_layer->shape(1), 5) << "Unsupported network, only 5 channels!";
+    CHECK_EQ(output_layer->shape(1), 6) << "Unsupported network, only 6 channels!";
 
     std::ifstream infile(path_image_list.c_str());
     CHECK(infile) << "Unable to open image list TXT file '" << path_image_list << "'!";
