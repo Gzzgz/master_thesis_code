@@ -394,7 +394,7 @@ void BBTXTLossLayer<Dtype>::_applyDiffWeights (int b)
 
         data_acc_prob++;
 
-        *data_diff_conf = Dtype(0);
+        *data_diff_conf *= Dtype(0.1);
         data_diff_conf++;
     }
 }
