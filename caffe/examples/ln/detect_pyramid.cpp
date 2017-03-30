@@ -115,14 +115,17 @@ void runPyramidDetection (const std::string &path_prototxt, const std::string &p
             float *data_output = output->mutable_cpu_data();
 
             cv::Mat acc_prob(output->shape(2), output->shape(3), CV_32FC1, data_output+output->offset(0, 0));
+            cv::Mat acc_conf(output->shape(2), output->shape(3), CV_32FC1, data_output+output->offset(0, 1));
 
-            if (output->shape(1) == 5)
+            std::cout << acc_conf << std::endl;
+
+            if (output->shape(1) == 6)
             {
                 // 2D bounding box
-                cv::Mat acc_xmin(output->shape(2), output->shape(3), CV_32FC1, data_output+output->offset(0, 1));
-                cv::Mat acc_ymin(output->shape(2), output->shape(3), CV_32FC1, data_output+output->offset(0, 2));
-                cv::Mat acc_xmax(output->shape(2), output->shape(3), CV_32FC1, data_output+output->offset(0, 3));
-                cv::Mat acc_ymax(output->shape(2), output->shape(3), CV_32FC1, data_output+output->offset(0, 4));
+                cv::Mat acc_xmin(output->shape(2), output->shape(3), CV_32FC1, data_output+output->offset(0, 2));
+                cv::Mat acc_ymin(output->shape(2), output->shape(3), CV_32FC1, data_output+output->offset(0, 3));
+                cv::Mat acc_xmax(output->shape(2), output->shape(3), CV_32FC1, data_output+output->offset(0, 4));
+                cv::Mat acc_ymax(output->shape(2), output->shape(3), CV_32FC1, data_output+output->offset(0, 5));
 
                 double mx;
                 cv::minMaxLoc(acc_prob, 0, &mx);
@@ -135,7 +138,8 @@ void runPyramidDetection (const std::string &path_prototxt, const std::string &p
                 {
                     for (int j = 0; j < acc_prob.cols; ++j)
                     {
-                        float conf = acc_prob.at<float>(i, j);
+//                        std::cout <<  acc_prob.at<float>(i, j) << " + " << acc_conf.at<float>(i, j) << std::endl;
+                        float conf = acc_prob.at<float>(i, j) + acc_conf.at<float>(i, j);
                         if (conf >= 0.7)
                         {
                             int xmin = (4*j + (80*(acc_xmin.at<float>(i, j) - 0.5))) / s;
