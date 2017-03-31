@@ -288,11 +288,6 @@ void BB3TXTLossLayer<Dtype>::_buildAccumulator (int b)
                     cv::circle(acc, cv::Point(scaling_ratio*x,
                                               scaling_ratio*y), radius, cv::Scalar(Dtype(1.0f)), -1);
                 }
-                else if (c == 1)
-                {
-                    cv::circle(acc, cv::Point(scaling_ratio*x,
-                                              scaling_ratio*y), radius+1, cv::Scalar(Dtype(0.0f)), -1);
-                }
                 else
                 {
                     // Render fblx, fbly, fbrx, fbry, rblx, rbly, ftly into the accumulators, that is why +3

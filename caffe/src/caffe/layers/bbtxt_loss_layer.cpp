@@ -260,6 +260,8 @@ void BBTXTLossLayer<Dtype>::_buildAccumulator (int b)
                 data_bot_prob++;
                 data_acc_conf++;
             }
+
+            continue;
         }
 
         // Draw circles in the center of the bounding boxes
@@ -284,11 +286,6 @@ void BBTXTLossLayer<Dtype>::_buildAccumulator (int b)
                 {
                     cv::circle(acc, cv::Point(scaling_ratio*x,
                                               scaling_ratio*y), radius, cv::Scalar(Dtype(1.0f)), -1);
-                }
-                else if (c == 1)
-                {
-                    cv::circle(acc, cv::Point(scaling_ratio*x,
-                                              scaling_ratio*y), radius+1, cv::Scalar(Dtype(0.0f)), -1);
                 }
                 else
                 {
