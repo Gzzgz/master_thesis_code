@@ -296,14 +296,14 @@ void runStatisticsComputation (const std::string &path_prototxt, const std::stri
 
     for (int i = 0; i < net->output_blobs().size(); ++i)
     {
-        hist_wh_neg.emplace_back(0, 2, 0, 2, 200);
-        hist_tl_neg.emplace_back(-1, 1, -1, 1, 200);
-        hist_br_neg.emplace_back(0, 2, 0, 2, 200);
-        hist_wh_pos.emplace_back(0, 2, 0, 2, 200);
-        hist_tl_pos.emplace_back(-1, 1, -1, 1, 200);
-        hist_br_pos.emplace_back(0, 2, 0, 2, 200);
-        hist_wh_car_g_bb.emplace_back(0, 2, 0, 2, 200);
-        hist_wh_notcar_g_bb.emplace_back(0, 2, 0, 2, 200);
+        hist_wh_neg.emplace_back(0, 2, 0, 2, 50);
+        hist_tl_neg.emplace_back(-1, 1, -1, 1, 50);
+        hist_br_neg.emplace_back(0, 2, 0, 2, 50);
+        hist_wh_pos.emplace_back(0, 2, 0, 2, 50);
+        hist_tl_pos.emplace_back(-1, 1, -1, 1, 50);
+        hist_br_pos.emplace_back(0, 2, 0, 2, 50);
+        hist_wh_car_g_bb.emplace_back(0, 2, 0, 2, 50);
+        hist_wh_notcar_g_bb.emplace_back(0, 2, 0, 2, 50);
     }
 
 
@@ -317,6 +317,9 @@ void runStatisticsComputation (const std::string &path_prototxt, const std::stri
         computeStatistics(line, net, gt_bbs_list);
     }
 
+
+    // Save to XML
+    cv::FileStorage fs(path_out + "/hist_wh_car_g_bb.xml", cv::FileStorage::WRITE);
 
     for (int i = 0; i < net->output_blobs().size(); ++i)
     {
@@ -370,6 +373,8 @@ void runStatisticsComputation (const std::string &path_prototxt, const std::stri
             cv::Mat comb_cf; cv::merge(chs, comb_cf);
 //            cv::imshow("P(CAR_GT|BB) WxH " + std::to_string(i), comb_cf);
             cv::imwrite(path_out + "/hist_wh_car_g_bb_" + net->blob_names()[net->output_blob_indices()[i]] + ".png", comb_cf*255);
+
+            fs << net->blob_names()[net->output_blob_indices()[i]] << hist_wh_car_g_bb[i].countNormalized();
         }
 
         {
@@ -387,6 +392,8 @@ void runStatisticsComputation (const std::string &path_prototxt, const std::stri
         }
 
     }
+
+    fs.release();
 
 //    cv::waitKey();
 }

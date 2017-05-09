@@ -463,6 +463,8 @@ message BBTXTBBParameter {
   optional float ideal_size = 1;
   // How many times is the accumulator downsampled with respect to the input image
   optional int32 downsampling = 2;
+  // Loading P(OBJ_GT|BB)
+  optional string path_obj_g_bb_xml = 3;
 }
 
 // Message that stores parameters used to apply transformation

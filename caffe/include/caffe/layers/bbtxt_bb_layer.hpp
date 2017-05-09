@@ -51,6 +51,9 @@ protected:
 //                               const vector<Blob<Dtype>*> &bottom) override;
 
 
+    // ---------------------------------------  PROTECTED MEMBERS  --------------------------------------- //
+    cv::Mat _obj_g_bb;
+
 };
 
 
