@@ -1,9 +1,6 @@
 #include <algorithm>
 #include <vector>
-#include <opencv2/core/persistence.hpp>
 #include <opencv2/core/core.hpp>
-#include <opencv2/highgui/highgui.hpp>
-#include <opencv2/imgproc/imgproc.hpp>
 
 #include "caffe/layers/bbtxt_bb_layer.hpp"
 
